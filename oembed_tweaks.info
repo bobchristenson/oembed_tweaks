@@ -1,0 +1,5 @@
+; $Id $
+name = Oembed Tweaks
+description = Custom Functions to enhance Oembed Theming
+package = Custom
+core = 7.x

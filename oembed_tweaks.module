@@ -1,0 +1,65 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Custom Functions to tweak oembed functionality
+ */
+
+/*
+* Implementation of hook_form_alter
+*/
+
+function oembed_tweaks_form_alter(&$form, &$form_state, $form_id) {
+  //set oembed to default if coming
+  //from our bookmarklet widget			
+  if($form_id == 'article_node_form') {
+    $querystring = drupal_get_query_parameters();
+    if(!empty($querystring) && !empty($querystring['type']) && $querystring['type'] == 'oembed') {
+      $form['field_article_type']['und']['#default_value'] = 'oembed';
+    }
+  }
+}
+
+
+/*
+* Implementation of hook_nodeapi
+* Grabbing the oembed data and adding it to the node data to be saved
+*/
+function oembed_tweaks_node_presave($node) {
+  if($node->type == 'article'){
+    if($node->field_article_type['und'][0]['value'] == 'oembed') {
+      if($node->field_article_oembed['und']) {
+        $oembed = oembedcore_oembed_data($node->field_article_oembed['und'][0]['url']);
+        if($oembed){
+        
+       
+        
+          /* If no body, autofill with oembed description */
+          if(!$node->field_article_body['und']){
+            if($oembed->description) {
+             
+              $node->field_article_body['und'][0] = array(
+                'value' => $oembed->description,
+              );
+              
+            }
+          }
+          /* if no uploaded image autofill with oembed thumbnail */
+          if(!empty($oembed->thumbnail_url) && !$node->field_article_image['und']) {
+            
+            $provider = media_internet_get_provider($oembed->thumbnail_url);
+            // Providers decide if they need to save locally or somewhere else.
+            // This method returns a file object
+            $file = $provider->save();
+          
+            $node->field_article_image['und'][0]['fid'] = $file->fid;
+            $node->field_article_image['und'][0]['display'] = 1;
+          }    
+        } else {
+          drupal_set_message('Ooops. That URL did not return any Oembed data.','error');
+        }
+      }
+    }
+  }
+}
